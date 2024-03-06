@@ -1,6 +1,6 @@
-# Mini Sora 社区 minisora-DiT 复现项目
+# Mini Sora 社区 MiniSora-DiT 复现项目
 
-minisora-DiT, a DiT reproduction based on XTuner from the open source community MiniSora
+MiniSora-DiT, a DiT reproduction based on XTuner from the open source community MiniSora
 
 <!-- PROJECT SHIELDS -->
 
