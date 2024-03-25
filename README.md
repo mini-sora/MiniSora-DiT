@@ -1,125 +1,127 @@
-# Mini Sora 社区 MiniSora-DiT 复现项目
+## Scalable Diffusion Models with Transformers (DiT)<br><sub>Improved PyTorch Implementation</sub>
 
-MiniSora-DiT, a DiT reproduction based on XTuner from the open source community MiniSora
+### [Paper](http://arxiv.org/abs/2212.09748) | [Project Page](https://www.wpeebles.com/DiT) | Run DiT-XL/2 [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/wpeebles/DiT) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](http://colab.research.google.com/github/facebookresearch/DiT/blob/main/run_DiT.ipynb) <a href="https://replicate.com/arielreplicate/scalable_diffusion_with_transformers"><img src="https://replicate.com/arielreplicate/scalable_diffusion_with_transformers/badge"></a>
 
-<!-- PROJECT SHIELDS -->
+![DiT samples](visuals/sample_grid_0.png)
 
-[![Contributors][contributors-shield]][contributors-url]
-[![Forks][forks-shield]][forks-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
-[![Stargazers][stars-shield]][stars-url]
-<br />
+This repo features an improved PyTorch implementation for the paper [**Scalable Diffusion Models with Transformers**](https://www.wpeebles.com/DiT).
 
-<!-- PROJECT LOGO -->
-<div align="center">
+It contains:
 
-<img src="assets/logo.jpg" width="600"/>
-  <div>&nbsp;</div>
-  <div align="center">
-  </div>
-</div>
+* 🪐 An improved PyTorch [implementation](models.py) and the original [implementation](train_options/models_original.py) of DiT
+* ⚡️ Pre-trained class-conditional DiT models trained on ImageNet (512x512 and 256x256)
+* 💥 A self-contained [Hugging Face Space](https://huggingface.co/spaces/wpeebles/DiT) and [Colab notebook](http://colab.research.google.com/github/facebookresearch/DiT/blob/main/run_DiT.ipynb) for running pre-trained DiT-XL/2 models
+* 🛸 An improved DiT [training script](train.py) and several [training options](train_options)
 
-<div align="center">
+## Setup
 
-[English](README_EN.md) | 简体中文  
+First, download and set up the repo:
 
-</div>
+```bash
+git clone https://github.com/chuanyangjin/fast-DiT.git
+cd DiT
+```
 
-<p align="center">
-    👋 加入我们的 <a href="https://cdn.vansin.top/minisora.jpg" target="_blank">微信社区</a>
-</p>
+We provide an [`environment.yml`](environment.yml) file that can be used to create a Conda environment. If you only want 
+to run pre-trained models locally on CPU, you can remove the `cudatoolkit` and `pytorch-cuda` requirements from the file.
 
-Mini Sora 开源社区定位为由社区同学自发组织的开源社区（**免费不收取任何费用、不割韭菜**），Mini Sora 计划探索 Sora 的实现路径和后续的发展方向：
+```bash
+conda env create -f environment.yml
+conda activate DiT
+```
 
-- 将定期举办 Sora 的圆桌和社区一起探讨可能性
-- 视频生成的现有技术路径探讨
 
-## MiniSora社区复现小组
+## Sampling [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue)](https://huggingface.co/spaces/wpeebles/DiT) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](http://colab.research.google.com/github/facebookresearch/DiT/blob/main/run_DiT.ipynb)
+![More DiT samples](visuals/sample_grid_1.png)
 
-[**MiniSora复现小组页面**](https://github.com/mini-sora/minisora/tree/main/codes)
+**Pre-trained DiT checkpoints.** You can sample from our pre-trained DiT models with [`sample.py`](sample.py). Weights for our pre-trained DiT model will be 
+automatically downloaded depending on the model you use. The script has various arguments to switch between the 256x256
+and 512x512 models, adjust sampling steps, change the classifier-free guidance scale, etc. For example, to sample from
+our 512x512 DiT-XL/2 model, you can use:
 
-### MiniSora-DiT: 基于XTuner复现论文DiT
+```bash
+python sample.py --image-size 512 --seed 1
+```
 
-#### 招募要求
+For convenience, our pre-trained DiT models can be downloaded directly here as well:
 
-招募MiniSora社区同学使用 `XTuner` 复现 `DiT`, 希望领取任务同学有如下特点：
+| DiT Model     | Image Resolution | FID-50K | Inception Score | Gflops | 
+|---------------|------------------|---------|-----------------|--------|
+| [XL/2](https://dl.fbaipublicfiles.com/DiT/models/DiT-XL-2-256x256.pt) | 256x256          | 2.27    | 278.24          | 119    |
+| [XL/2](https://dl.fbaipublicfiles.com/DiT/models/DiT-XL-2-512x512.pt) | 512x512          | 3.04    | 240.82          | 525    |
 
-1. 熟悉 `OpenMMLab MMEngine` 机制
-2. 熟悉 `DiT`
 
-#### 背景
+**Custom DiT checkpoints.** If you've trained a new DiT model with [`train.py`](train.py) (see [below](#training-dit)), you can add the `--ckpt`
+argument to use your own checkpoint instead. For example, to sample from the EMA weights of a custom 
+256x256 DiT-L/4 model, run:
 
-1. `DiT` 作者和 `Sora` 作者为同一个
-2. `XTuner` 现有能够高效训练 `1000K` 序列长度的核心技术
+```bash
+python sample.py --model DiT-L/4 --image-size 256 --ckpt /path/to/model.pt
+```
 
-#### 支持
 
-1. 算力提供 2*A100
-2. XTuner 核心开发者 [P佬@pppppM](https://github.com/pppppM) 会大力支持~
+## Training
+### Preparation Before Training
+To extract ImageNet features with `1` GPUs on one node:
 
-[**XTuner**: https://github.com/internLM/xtuner](https://github.com/internLM/xtuner)
+```bash
+torchrun --nnodes=1 --nproc_per_node=1 extract_features.py --model DiT-XL/2 --data-path /path/to/imagenet/train --features-path /path/to/store/features
+```
 
-## 最近更新
+### Training DiT
+We provide a training script for DiT in [`train.py`](train.py). This script can be used to train class-conditional 
+DiT models, but it can be easily modified to support other types of conditioning. 
 
-- [**empty**:](empty)
+To launch DiT-XL/2 (256x256) training with `1` GPUs on one node:
 
-## 论文共读计划
+```bash
+accelerate launch --mixed_precision fp16 train.py --model DiT-XL/2 --features-path /path/to/store/features
+```
 
-### 论文共读发表者募集
+To launch DiT-XL/2 (256x256) training with `N` GPUs on one node:
+```bash
+accelerate launch --multi_gpu --num_processes N --mixed_precision fp16 train.py --model DiT-XL/2 --features-path /path/to/store/features
+```
 
-- [**DiT** (ICCV 23 Paper)](https://github.com/orgs/mini-sora/discussions/39)
-- [**Stable Cascade** (ICLR 24 Paper)](https://github.com/orgs/mini-sora/discussions/145)
+Alternatively, you have the option to extract and train the scripts located in the folder [training options](train_options).
 
-## Sora复现小组-MiniSora社区微信交流群
 
-<div align="center">
+### PyTorch Training Results
 
-<img src="./assets/sora-reproduce.png" width="200"/>
-  <div>&nbsp;</div>
-  <div align="center">
-  </div>
-</div>
+We've trained DiT-XL/2 and DiT-B/4 models from scratch with the PyTorch training script
+to verify that it reproduces the original JAX results up to several hundred thousand training iterations. Across our experiments, the PyTorch-trained models give 
+similar (and sometimes slightly better) results compared to the JAX-trained models up to reasonable random variation. Some data points:
 
-## Mini Sora 微信社区社区交流群
+| DiT Model  | Train Steps | FID-50K<br> (JAX Training) | FID-50K<br> (PyTorch Training) | PyTorch Global Training Seed |
+|------------|-------------|----------------------------|--------------------------------|------------------------------|
+| XL/2       | 400K        | 19.5                       | **18.1**                       | 42                           |
+| B/4        | 400K        | **68.4**                   | 68.9                           | 42                           |
+| B/4        | 400K        | 68.4                       | **68.3**                       | 100                          |
 
-<div align="center">
-<img src="assets/qrcode.png" width="200"/>
+These models were trained at 256x256 resolution; we used 8x A100s to train XL/2 and 4x A100s to train B/4. Note that FID 
+here is computed with 250 DDPM sampling steps, with the `mse` VAE decoder and without guidance (`cfg-scale=1`). 
 
-  <div>&nbsp;</div>
-  <div align="center">
-  </div>
-</div>
 
-## MiniSora Star History
+### Improved Training Performance
+In comparison to the original implementation, we implement a selection of training speed acceleration and memory saving features including gradient checkpointing, mixed precision training, and pre-extracted VAE features, resulting in a 95% speed increase and 60% memory reduction on DiT-XL/2. Some data points using a global batch size of 128 with a A100:
+ 
+| gradient checkpointing | mixed precision training | feature pre-extraction | training speed | memory       |
+|:----------------------:|:------------------------:|:----------------------:|:--------------:|:------------:|
+| ❌                    | ❌                       | ❌                    | -              | out of memory|
+| ✔                     | ❌                       | ❌                    | 0.43 steps/sec | 44045 MB     |
+| ✔                     | ✔                        | ❌                    | 0.56 steps/sec | 40461 MB     |
+| ✔                     | ✔                        | ✔                     | 0.84 steps/sec | 27485 MB     |
 
-[![Star History Chart](https://api.star-history.com/svg?repos=mini-sora/minisora&type=Date)](https://star-history.com/#mini-sora/minisora&Date)
 
-## 如何向Mini Sora 社区贡献
+## Evaluation (FID, Inception Score, etc.)
 
-我们非常希望你们能够为 Mini Sora 开源社区做出贡献，并且帮助我们把它做得比现在更好！
+We include a [`sample_ddp.py`](sample_ddp.py) script which samples a large number of images from a DiT model in parallel. This script 
+generates a folder of samples as well as a `.npz` file which can be directly used with [ADM's TensorFlow
+evaluation suite](https://github.com/openai/guided-diffusion/tree/main/evaluations) to compute FID, Inception Score and
+other metrics. For example, to sample 50K images from our pre-trained DiT-XL/2 model over `N` GPUs, run:
 
-具体查看[贡献指南](./docs/CONTRIBUTING.md)
+```bash
+torchrun --nnodes=1 --nproc_per_node=N sample_ddp.py --model DiT-XL/2 --num-fid-samples 50000
+```
 
-## 社区贡献者
-
-<!-- readme: collaborators,contributors -start -->
-
-<!-- readme: collaborators,contributors -end -->
-
-<a href="https://github.com/mini-sora/minisora/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=mini-sora/minisora" />
-</a>
-
-[your-project-path]: mini-sora/minisora
-[contributors-shield]: https://img.shields.io/github/contributors/mini-sora/minisora.svg?style=flat-square
-[contributors-url]: https://github.com/mini-sora/minisora/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/mini-sora/minisora.svg?style=flat-square
-[forks-url]: https://github.com/mini-sora/minisora/network/members
-[stars-shield]: https://img.shields.io/github/stars/mini-sora/minisora.svg?style=flat-square
-[stars-url]: https://github.com/mini-sora/minisora/stargazers
-[issues-shield]: https://img.shields.io/github/issues/mini-sora/minisora.svg?style=flat-square
-[issues-url]: https://img.shields.io/github/issues/mini-sora/minisora.svg
-[license-shield]: https://img.shields.io/github/license/mini-sora/minisora.svg?style=flat-square
-[license-url]: https://github.com/mini-sora/minisora/blob/main/LICENSE
-
+There are several additional options; see [`sample_ddp.py`](sample_ddp.py) for details.
