@@ -87,7 +87,7 @@ openxlab dataset get --dataset-repo OpenDataLab/ImageNet-1K #数据集下载
 
 执行后会对每个图片生成一个 npy 文件，训练的时候直接读取
 
-2. 使用 mmengine 重写数据流
+2. 使用 mmengine 重写数据流，下面是原版的 dataset，可见直接读取上一步生成的 npy 文件，省去了前处理时间
 
 ```python
 class CustomDataset(Dataset):
